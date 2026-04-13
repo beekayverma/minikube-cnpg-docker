@@ -1,0 +1,34 @@
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg-test
+  namespace: cnpg-test
+spec:
+  instances: 3
+  imageName: ghcr.io/cloudnative-pg/postgresql:17.0
+
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "400Mi"
+      cpu: "500m"
+
+  postgresql:
+    parameters:
+      max_connections: "50"
+      shared_buffers: "128MB"
+
+  bootstrap:
+    initdb:
+      database: testdb
+      owner: testuser
+      secret:
+        name: pg-test-credentials
+      encoding: UTF8
+      dataChecksums: true
+
+  storage:
+    size: 5Gi
+    storageClass: standard

@@ -13,15 +13,21 @@ spec:
       value: "pg-test-pooler-rw"
     - name: PGDATABASE
       value: "testdb"
-    - name: PGUSER
-      valueFrom:
-        secretKeyRef:
-          name: pg-test-credentials
-          key: username
-    - name: PGPASSWORD
-      valueFrom:
-        secretKeyRef:
-          name: pg-test-credentials
-          key: password
     - name: PGSSLMODE
       value: "require"
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "64Mi"
+      limits:
+        cpu: "100m"
+        memory: "128Mi"
+    volumeMounts:
+    - name: db-creds
+      mountPath: /etc/db-creds
+      readOnly: true
+  volumes:
+  - name: db-creds
+    secret:
+      secretName: pg-test-credentials
+      defaultMode: 0600

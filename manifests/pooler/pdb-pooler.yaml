@@ -1,0 +1,21 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: pg-test-pooler-rw-pdb
+  namespace: cnpg-test
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      cnpg.io/poolerName: pg-test-pooler-rw
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: pg-test-pooler-ro-pdb
+  namespace: cnpg-test
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      cnpg.io/poolerName: pg-test-pooler-ro

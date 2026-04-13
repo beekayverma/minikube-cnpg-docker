@@ -10,7 +10,7 @@ spec:
     command: ["sleep", "infinity"]
     env:
     - name: PGHOST
-      value: "pg-test-rw"
+      value: "pg-test-pooler-rw"
     - name: PGDATABASE
       value: "testdb"
     - name: PGUSER

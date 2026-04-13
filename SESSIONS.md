@@ -84,14 +84,14 @@ readOnly volumes.
 
 ---
 
-### Session 6 - External Secret Store with Vault (coming soon)
+### [Session 6 - External Secret Store with Vault](docs/vault-external-secrets.md)
 
 Why Kubernetes-native secrets are still not enough. Run HashiCorp Vault locally as a Docker
 container. Store credentials in Vault. Use the External Secrets Operator to sync them into
 Kubernetes Secrets automatically. Trigger rotation from Vault with no manual steps.
 
-Key concepts: Vault dev server, External Secrets Operator, dynamic secrets, KV engine,
-envelope encryption.
+Key concepts: Vault dev server, External Secrets Operator, ClusterSecretStore, ExternalSecret,
+KV engine v2, refreshInterval, creationPolicy, token auth.
 
 ---
 

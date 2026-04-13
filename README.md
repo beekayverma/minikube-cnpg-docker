@@ -203,7 +203,7 @@ docs/
 | 3 | PgBouncer Connection Pooling | [doc](docs/pgbouncer-connection-pooling.md) |
 | 4 | Secret Rotation | [doc](docs/secret-rotation.md) |
 | 5 | File Mounting Instead of Env Vars | [doc](docs/file-mounting-vs-env-vars.md) |
-| 6 | External Secret Store with Vault | coming soon |
+| 6 | External Secret Store with Vault | [doc](docs/vault-external-secrets.md) |
 | 7 | Security Hardening | coming soon |
 
 ---

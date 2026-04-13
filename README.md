@@ -1,35 +1,50 @@
 # minikube-cnpg-docker
 
-A step-by-step local CloudNativePG (CNPG) setup on minikube using Docker as the driver.
+A hands-on security workshop for CloudNativePG on Kubernetes.
 
 - Author: beekay.verma@gmail.com
 - Postgres version: 17.0
 - CNPG operator version: 1.24.0
 - Kubernetes version: v1.30.0
 
+Every concept is demonstrated live on a local minikube cluster. No theory without proof.
+
 ---
 
-## What This Repo Does
+## What This Repo Is
 
-Deploys a 3-instance CloudNativePG Postgres cluster on a local minikube cluster.
+A 7-session workshop series covering how to deploy and secure a production-grade
+CloudNativePG Postgres cluster on Kubernetes. Built for engineers who want to understand
+not just how to run CNPG, but how to secure it end to end.
+
+See [SESSIONS.md](SESSIONS.md) for the full workshop index.
+
+---
+
+## What Gets Deployed
+
+A 3-instance CloudNativePG Postgres cluster on a local minikube cluster:
 
 ```
 cnpg-test namespace
 - pg-test-1  (primary  - reads + writes)
-- pg-test-2  (replica  - read only, replicating from primary)
-- pg-test-3  (replica  - read only, replicating from primary)
+- pg-test-2  (replica  - streaming replication from primary)
+- pg-test-3  (replica  - streaming replication from primary)
+
+PgBouncer poolers
+- pg-test-pooler-rw  (2 pods - routes to primary)
+- pg-test-pooler-ro  (2 pods - routes to replicas)
 ```
 
-The CNPG operator manages replication automatically. If the primary pod dies, it promotes a replica without manual intervention.
+CNPG manages replication automatically. If the primary pod dies, a replica is promoted
+without manual intervention.
 
 ---
 
 ## Prerequisites
 
-Make sure these tools are installed before starting:
-
 | Tool | Purpose |
-|------|---------|
+| --- | --- |
 | minikube | Runs a local Kubernetes cluster inside Docker |
 | kubectl | CLI to interact with Kubernetes |
 | docker | Container runtime used by minikube |
@@ -42,42 +57,9 @@ minikube version && kubectl version --client && docker --version
 
 ---
 
-## Repo Structure
+## Quick Start
 
-```
-.
-- manifests/
-  - cluster/
-    - namespace.yaml          # cnpg-test namespace
-    - secret.template.yaml    # copy this to secret.yaml and fill in credentials
-    - cluster.yaml            # CNPG Cluster custom resource (3 instances)
-- README.md
-- .gitignore
-```
-
-> `secret.yaml` is git-ignored. Never commit real credentials.
-
----
-
-## Step-by-Step Setup
-
-### Step 1 - Check for Existing Minikube Clusters
-
-Before starting, check if any old clusters are running:
-
-```bash
-minikube profile list
-```
-
-If you see any profiles you no longer need, remove them:
-
-```bash
-minikube delete -p <profile-name>
-```
-
----
-
-### Step 2 - Start Minikube
+### Step 1 - Start Minikube
 
 ```bash
 minikube start \
@@ -89,16 +71,14 @@ minikube start \
   --kubernetes-version=v1.30.0
 ```
 
-Flag breakdown:
-
 | Flag | Meaning |
-|------|---------|
-| `--profile=cnpg-local` | Names this cluster to avoid conflicts with other profiles |
-| `--driver=docker` | Uses Docker to run the K8s node instead of a VM |
+| --- | --- |
+| `--profile=cnpg-local` | Names this cluster to avoid conflicts with other minikube profiles |
+| `--driver=docker` | Uses Docker to run the Kubernetes node instead of a VM |
 | `--cpus=4` | Allocates 4 CPU cores |
 | `--memory=6144` | Allocates 6GB RAM |
 | `--disk-size=20g` | 20GB disk for storage |
-| `--kubernetes-version=v1.30.0` | Pins a specific K8s version |
+| `--kubernetes-version=v1.30.0` | Pins a specific Kubernetes version for reproducibility |
 
 Verify the node is ready:
 
@@ -106,149 +86,131 @@ Verify the node is ready:
 kubectl get nodes
 ```
 
-Expected output:
-
-```
-NAME         STATUS   ROLES           AGE   VERSION
-cnpg-local   Ready    control-plane   ...   v1.30.0
-```
-
----
-
-### Step 3 - Install the CNPG Operator
-
-The CNPG operator teaches Kubernetes how to manage Postgres clusters. It registers Custom Resource Definitions (CRDs) and runs a controller that watches for `Cluster` resources.
+### Step 2 - Install the CNPG Operator
 
 ```bash
 kubectl apply --server-side \
   -f https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.24/releases/cnpg-1.24.0.yaml
 ```
 
-Why `--server-side`: The CNPG manifest is large. Server-side apply lets the K8s API server handle merging logic and avoids annotation size limits.
-
-Wait for the operator to be fully ready:
+Wait for the operator to be ready:
 
 ```bash
 kubectl -n cnpg-system rollout status deployment/cnpg-controller-manager
 ```
 
-Expected output:
-
-```
-deployment "cnpg-controller-manager" successfully rolled out
-```
-
----
-
-### Step 4 - Create the Namespace
+### Step 3 - Create the Namespace
 
 ```bash
 kubectl apply -f manifests/cluster/namespace.yaml
 ```
 
-This creates the `cnpg-test` namespace where all Postgres resources will live.
-
----
-
-### Step 5 - Create the Credentials Secret
-
-Copy the template and fill in your credentials:
+### Step 4 - Generate Credentials
 
 ```bash
-cp manifests/cluster/secret.template.yaml manifests/cluster/secret.yaml
-```
-
-Edit `manifests/cluster/secret.yaml` and replace `YOUR_USERNAME` and `YOUR_PASSWORD` with real values, then apply:
-
-```bash
+scripts/generate-secret.sh
 kubectl apply -f manifests/cluster/secret.yaml
 ```
 
-> The secret uses `type: kubernetes.io/basic-auth`. Kubernetes stores the values base64-encoded. This is not encryption - use a proper secrets manager in production.
-
----
-
-### Step 6 - Deploy the CNPG Cluster
+### Step 5 - Deploy the Cluster
 
 ```bash
 kubectl apply -f manifests/cluster/cluster.yaml
 ```
 
-Watch the pods come up:
+Watch pods come up:
 
 ```bash
 kubectl -n cnpg-test get pods -w
 ```
 
-CNPG starts `pg-test-1` first (the primary), then brings up replicas one by one. Wait until all 3 show `1/1 Running`.
+Wait until all 3 show `1/1 Running`.
 
----
-
-### Step 7 - Verify Cluster Health
+### Step 6 - Verify
 
 ```bash
 kubectl -n cnpg-test get cluster pg-test
 ```
 
-Expected output:
+Expected:
 
 ```
 NAME      AGE   INSTANCES   READY   STATUS                     PRIMARY
 pg-test   ...   3           3       Cluster in healthy state   pg-test-1
 ```
 
-- `INSTANCES` and `READY` should both be `3`
-- `STATUS` should say `Cluster in healthy state`
-- `PRIMARY` shows which pod is currently the read/write node
+---
+
+## Repo Structure
+
+```
+manifests/
+  cluster/       - namespace, secret template, CNPG cluster, test-app pod
+  operator/      - CNPG operator install reference
+  pooler/        - PgBouncer pooler manifests and PodDisruptionBudgets
+  rbac/          - Role, ServiceAccount, RoleBinding manifests
+scripts/
+  generate-secret.sh   - generate a fresh random credentials secret
+  wait-for.sh          - poll until pods matching a label selector are Ready
+docs/
+  failover-and-self-healing.md
+  secret-injection.md
+  rbac.md
+  secret-encryption-at-rest.md
+  pgbouncer-connection-pooling.md
+  secret-rotation.md
+  file-mounting-vs-env-vars.md
+```
 
 ---
 
-## Connecting to Postgres
+## Workshop Sessions
 
-Connect directly into the primary pod:
-
-```bash
-kubectl -n cnpg-test exec -it pg-test-1 -c postgres -- psql -U testuser -d testdb
-```
-
-Or port-forward to connect from your local machine:
-
-```bash
-kubectl -n cnpg-test port-forward svc/pg-test-rw 5432:5432
-```
-
-Then connect with any Postgres client:
-
-```bash
-psql -h localhost -U testuser -d testdb
-```
+| Session | Topic | Doc |
+| --- | --- | --- |
+| 1 | Cluster, Replication, Failover, RBAC | [doc](docs/failover-and-self-healing.md) |
+| 2 | Secret Encryption at Rest | [doc](docs/secret-encryption-at-rest.md) |
+| 3 | PgBouncer Connection Pooling | [doc](docs/pgbouncer-connection-pooling.md) |
+| 4 | Secret Rotation | [doc](docs/secret-rotation.md) |
+| 5 | File Mounting Instead of Env Vars | [doc](docs/file-mounting-vs-env-vars.md) |
+| 6 | External Secret Store with Vault | coming soon |
+| 7 | Security Hardening | coming soon |
 
 ---
 
 ## Useful Commands
 
 ```bash
-# Check everything in the namespace
-kubectl -n cnpg-test get all
+# Check cluster health
+kubectl -n cnpg-test get cluster pg-test
 
-# Check services CNPG created
+# Check all pods
+kubectl -n cnpg-test get pods
+
+# Check services
 kubectl -n cnpg-test get svc
+
+# Check PodDisruptionBudgets
+kubectl -n cnpg-test get pdb
+
+# Connect via rw pooler
+kubectl -n cnpg-test exec -it test-app -- bash -c \
+  'PGPASSWORD=$(cat /etc/db-creds/password) psql \
+   -U $(cat /etc/db-creds/username) \
+   -h pg-test-pooler-rw testdb'
 
 # Tail operator logs
 kubectl -n cnpg-system logs deploy/cnpg-controller-manager --tail=50
 
-# Tail primary pod logs
-kubectl -n cnpg-test logs pg-test-1 -c postgres --tail=50
-
-# Check cluster status
-kubectl -n cnpg-test get cluster pg-test
+# Rotate credentials
+scripts/generate-secret.sh
 ```
 
 ---
 
 ## Teardown
 
-Remove the cluster and operator but keep the minikube VM:
+Remove the cluster and operator but keep minikube:
 
 ```bash
 kubectl -n cnpg-test delete cluster pg-test
@@ -256,21 +218,8 @@ kubectl delete -f manifests/cluster/namespace.yaml
 kubectl delete -f https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.24/releases/cnpg-1.24.0.yaml
 ```
 
-Delete the minikube VM entirely:
+Delete minikube entirely:
 
 ```bash
 minikube delete -p cnpg-local
 ```
-
----
-
-## How Replication Works
-
-```
-pg-test-1  (primary)
-    |
-    - WAL stream --> pg-test-2  (replica)
-    - WAL stream --> pg-test-3  (replica)
-```
-
-WAL (Write-Ahead Log) is Postgres's transaction log. Replicas continuously stream it from the primary to stay in sync. If the primary pod fails, CNPG automatically promotes one of the replicas - no manual steps required.

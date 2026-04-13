@@ -126,17 +126,47 @@ kubectl -n cnpg-test get pods -w
 
 Wait until all 3 show `1/1 Running`.
 
-### Step 6 - Verify
+### Step 6 - Deploy RBAC, Poolers, and Test App
+
+```bash
+kubectl apply -f manifests/rbac/
+kubectl apply -f manifests/pooler/pooler-rw.yaml
+kubectl apply -f manifests/pooler/pooler-ro.yaml
+kubectl apply -f manifests/pooler/pdb-pooler.yaml
+kubectl apply -f manifests/cluster/test-app.yaml
+```
+
+Wait for all pods to be ready:
+
+```bash
+kubectl -n cnpg-test get pods -w
+```
+
+Wait until pooler pods and test-app show `1/1 Running`.
+
+### Step 7 - Verify
 
 ```bash
 kubectl -n cnpg-test get cluster pg-test
+kubectl -n cnpg-test get pods
+kubectl -n cnpg-test get pdb
 ```
 
-Expected:
+Expected cluster output:
 
 ```
 NAME      AGE   INSTANCES   READY   STATUS                     PRIMARY
 pg-test   ...   3           3       Cluster in healthy state   pg-test-1
+```
+
+Test the connection through the pooler:
+
+```bash
+kubectl -n cnpg-test exec -it test-app -- bash -c \
+  'PGPASSWORD=$(cat /etc/db-creds/password) psql \
+   -U $(cat /etc/db-creds/username) \
+   -h pg-test-pooler-rw testdb \
+   -c "SELECT current_user, now();"'
 ```
 
 ---

@@ -1,0 +1,26 @@
+cluster:
+  name: pg-test
+  namespace: cnpg-test
+  instances: 3
+  image: ghcr.io/cloudnative-pg/postgresql:17.0
+
+database:
+  name: testdb
+  owner: testuser
+
+storage:
+  size: 5Gi
+  storageClass: standard
+
+resources:
+  requests:
+    memory: "256Mi"
+    cpu: "100m"
+  limits:
+    memory: "400Mi"
+    cpu: "500m"
+
+credentials:
+  username: testuser
+  password: ""
+

@@ -69,8 +69,7 @@ start: check
 			--cpus=$(MINIKUBE_CPUS) \
 			--memory=$(MINIKUBE_MEMORY) \
 			--disk-size=$(MINIKUBE_DISK) \
-			--kubernetes-version=$(MINIKUBE_K8S_VERSION) \
-			--extra-config=kubelet.syncFrequency=15s; \
+			--kubernetes-version=$(MINIKUBE_K8S_VERSION); \
 	fi
 	@$(KC) get nodes
 

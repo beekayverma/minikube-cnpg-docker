@@ -6,6 +6,8 @@ metadata:
 spec:
   instances: 3
   imageName: ghcr.io/cloudnative-pg/postgresql:17.0
+  startDelay: 60
+  stopDelay: 60
 
   resources:
     requests:
